@@ -25,6 +25,12 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Checkout MinHook
+        uses: actions/checkout@v4
+        with:
+          repository: TsudaKageyu/minhook
+          path: minhook_src
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -49,12 +55,11 @@ jobs:
 
       - name: Build and install MinHook
         run: |
-          git clone --depth 1 https://github.com/TsudaKageyu/minhook.git /tmp/minhook
-          cmake -S /tmp/minhook -B /tmp/minhook/build -G Ninja \
+          cmake -S minhook_src -B minhook_src/build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/mingw64
-          cmake --build /tmp/minhook/build
-          cmake --install /tmp/minhook/build
+          cmake --build minhook_src/build
+          cmake --install minhook_src/build
 
       - name: Determine version
         id: version
