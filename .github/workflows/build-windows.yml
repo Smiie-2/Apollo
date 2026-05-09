@@ -56,10 +56,10 @@ jobs:
       - name: Build and install MinHook
         run: |
           cmake -S minhook_src -B minhook_src/build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/mingw64
+            -DCMAKE_BUILD_TYPE=Release
           cmake --build minhook_src/build
-          cmake --install minhook_src/build
+          cp minhook_src/build/libminhook.a /mingw64/lib/libMinHook.a
+          cp minhook_src/include/MinHook.h /mingw64/include/MinHook.h
 
       - name: Determine version
         id: version
