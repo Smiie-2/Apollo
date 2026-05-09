@@ -1,0 +1,101 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v0.4.9)'
+        required: true
+        default: 'v0.4.9'
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Windows NSIS Installer
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+        # Node.js must be on the Windows PATH before MSYS2 runs so that
+        # CMake's find_program(NPM npm) resolves it inside the MINGW64 shell.
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
+            openssl:p
+            curl-winssl:p
+            miniupnpc:p
+            minhook:p
+            pkgconf:p
+            nsis:p
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        env:
+          GH_REF_TYPE: ${{ github.ref_type }}
+          GH_REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:GH_REF_TYPE -eq "tag") {
+            $ver = $env:GH_REF_NAME
+          } else {
+            $ver = $env:INPUT_VERSION
+          }
+          "version=$ver" | Out-File -Append $env:GITHUB_OUTPUT
+
+      - name: Configure CMake
+        env:
+          BRANCH: master
+          BUILD_VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.version }}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_DOCS=OFF \
+            -DBUILD_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package (NSIS)
+        run: |
+          cd build
+          cpack -G NSIS -V
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Apollo-${{ steps.version.outputs.version }}-windows-installer
+          path: build/cpack_artifacts/*.exe
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Apollo ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: build/cpack_artifacts/*.exe
