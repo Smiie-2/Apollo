@@ -44,9 +44,17 @@ jobs:
             openssl:p
             curl-winssl:p
             miniupnpc:p
-            minhook:p
             pkgconf:p
             nsis:p
+
+      - name: Build and install MinHook
+        run: |
+          git clone --depth 1 https://github.com/TsudaKageyu/minhook.git /tmp/minhook
+          cmake -S /tmp/minhook -B /tmp/minhook/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/mingw64
+          cmake --build /tmp/minhook/build
+          cmake --install /tmp/minhook/build
 
       - name: Determine version
         id: version
